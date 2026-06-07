@@ -44,4 +44,9 @@ class Analysis extends Model
     {
         return $this->belongsTo(Pet::class);
     }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }
