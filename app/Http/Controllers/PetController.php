@@ -33,7 +33,8 @@ class PetController extends Controller
             return response()->json(['message' => 'Analisis ini sudah terhubung ke hewan peliharaan.'], 422);
         }
 
-        $breed = \App\Models\Breed::where('name', $analysis->breed_prediction)->first();
+        $breedName = str_replace('_', ' ', $analysis->breed_prediction);
+        $breed = \App\Models\Breed::whereRaw('LOWER(name) = LOWER(?)', [$breedName])->first();
 
         if (! $breed) {
             return response()->json(['message' => 'Ras tidak ditemukan di database.'], 422);
