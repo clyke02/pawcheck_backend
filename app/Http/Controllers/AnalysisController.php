@@ -50,7 +50,9 @@ class AnalysisController extends Controller
         $confidence = $prediction['confidence'];
 
         // Resolve ideal weight from breeds table
-        $breed = Breed::where('name', $breedName)->first();
+        $breed = Breed::whereRaw('LOWER(REPLACE(name, " ", "_")) = ?', [
+            strtolower($breedName)
+        ])->first();
 
         $idealWeight = $breed
             ? $breed->getIdealWeightForGender($validated['gender'])
