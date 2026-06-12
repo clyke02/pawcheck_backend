@@ -39,7 +39,7 @@ class GeminiService
     private function buildPrompt(array $ctx): string
     {
         return <<<EOT
-Kamu adalah dokter hewan ahli nutrisi hewan peliharaan. Berikan rekomendasi nutrisi dan perawatan dalam Bahasa Indonesia yang ramah dan mudah dipahami pemilik hewan.
+Buatkan rekomendasi nutrisi dan perawatan hewan peliharaan berikut dalam Bahasa Indonesia. Langsung tulis rekomendasinya tanpa salam pembuka, tanpa perkenalan diri, dan tanpa kalimat pembuka apapun.
 
 Data Hewan:
 - Jenis: {$ctx['species']}
@@ -52,10 +52,10 @@ Data Hewan:
 - RER: {$ctx['rer']} kkal/hari
 - MER: {$ctx['mer']} kkal/hari
 
-Berikan rekomendasi yang mencakup:
-1. Penjelasan singkat kondisi BCS hewan
+Rekomendasi harus mencakup:
+1. Kondisi BCS saat ini
 2. Target kalori harian dan frekuensi makan
-3. Tips jenis makanan yang sesuai
+3. Jenis makanan yang sesuai
 4. Aktivitas fisik yang dianjurkan
 5. Kapan harus konsultasi ke dokter hewan
 
