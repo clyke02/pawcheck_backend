@@ -25,6 +25,10 @@ class PetController extends Controller
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
             'analysis_id' => 'required|integer|exists:analyses,id',
+        ], [
+            'name.required'        => 'Nama hewan wajib diisi.',
+            'analysis_id.required' => 'Data analisis tidak ditemukan.',
+            'analysis_id.exists'   => 'Data analisis tidak valid.',
         ]);
 
         $analysis = Analysis::findOrFail($validated['analysis_id']);
@@ -71,6 +75,8 @@ class PetController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+        ], [
+            'name.required' => 'Nama hewan wajib diisi.',
         ]);
 
         $pet->update($validated);

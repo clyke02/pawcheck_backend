@@ -36,6 +36,19 @@ class AnalysisController extends Controller
             'weight_kg'  => 'required|numeric|min:0.1|max:200',
             'age_years'  => 'required|numeric|min:0|max:30',
             'gender'     => 'required|in:male,female',
+        ], [
+            'image.required'    => 'Foto hewan wajib diunggah.',
+            'image.image'       => 'File harus berupa gambar.',
+            'image.max'         => 'Ukuran foto maksimal 5 MB.',
+            'weight_kg.required'=> 'Berat badan wajib diisi.',
+            'weight_kg.numeric' => 'Berat badan harus berupa angka.',
+            'weight_kg.min'     => 'Berat badan minimal 0.1 kg.',
+            'weight_kg.max'     => 'Berat badan maksimal 200 kg.',
+            'age_years.required'=> 'Usia wajib diisi.',
+            'age_years.numeric' => 'Usia harus berupa angka.',
+            'age_years.max'     => 'Usia maksimal 30 tahun.',
+            'gender.required'   => 'Jenis kelamin wajib dipilih.',
+            'gender.in'         => 'Jenis kelamin tidak valid.',
         ]);
 
         // Store image

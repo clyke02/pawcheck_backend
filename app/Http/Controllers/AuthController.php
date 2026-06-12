@@ -16,6 +16,13 @@ class AuthController extends Controller
             'name'     => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
+        ], [
+            'name.required'     => 'Nama wajib diisi.',
+            'email.required'    => 'Email wajib diisi.',
+            'email.email'       => 'Format email tidak valid.',
+            'email.unique'      => 'Email sudah terdaftar.',
+            'password.required' => 'Password wajib diisi.',
+            'password.min'      => 'Password minimal :min karakter.',
         ]);
 
         $user = User::create([
@@ -38,6 +45,10 @@ class AuthController extends Controller
         $validated = $request->validate([
             'email'    => 'required|email',
             'password' => 'required|string',
+        ], [
+            'email.required'    => 'Email wajib diisi.',
+            'email.email'       => 'Format email tidak valid.',
+            'password.required' => 'Password wajib diisi.',
         ]);
 
         $user = User::where('email', $validated['email'])->first();
