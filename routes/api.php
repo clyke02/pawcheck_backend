@@ -7,10 +7,10 @@ use Illuminate\Support\Facades\Route;
 
 // Auth (public)
 Route::prefix('auth')->group(function () {
-    Route::post('register',   [AuthController::class, 'register']);
-    Route::post('login',      [AuthController::class, 'login']);
-    Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
-    Route::post('resend-otp', [AuthController::class, 'resendOtp']);
+    Route::post('register',   [AuthController::class, 'register'])->middleware('throttle:10,1');
+    Route::post('login',      [AuthController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:10,1');
+    Route::post('resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:3,5');
 
     Route::middleware('auth:sanctum')->post('logout', [AuthController::class, 'logout']);
 });

@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
+use Illuminate\Support\Facades\DB;
 
 class AnalysisController extends Controller
 {
@@ -23,6 +24,7 @@ class AnalysisController extends Controller
     public function index(Request $request): JsonResponse
     {
         $analyses = Analysis::where('user_id', $request->user()->id)
+            ->with('pet')
             ->latest('created_at')
             ->get();
 
@@ -52,78 +54,91 @@ class AnalysisController extends Controller
             'gender.in'         => 'Jenis kelamin tidak valid.',
         ]);
 
-        // Store image
+        // Store image first; clean up on any subsequent failure
         $path = $request->file('image')->store('analyses', 'public');
-        $imageUrl = Storage::url($path);
 
-        // Predict breed via FastAPI
-        $imagePath = Storage::disk('public')->path($path);
-        $prediction = $this->breedService->predict($imagePath);
-
-        $breedName  = $prediction['breed'];
-        $confidence = $prediction['confidence'];
-
-        // Resolve ideal weight from breeds table
-        $breed = Breed::whereRaw('LOWER(REPLACE(name, " ", "_")) = ?', [
-            strtolower($breedName)
-        ])->first();
-
-        $idealWeight = $breed
-            ? $breed->getIdealWeightForGender($validated['gender'])
-            : $this->estimateIdealWeight((float) $validated['weight_kg']);
-
-        // BCS calculation
-        $bcsScore    = $this->bcsService->calculateBcs((float) $validated['weight_kg'], $idealWeight);
-        $bcsCategory = $this->bcsService->resolveBcsCategory($bcsScore);
-        $rer         = $this->bcsService->calculateRer((float) $validated['weight_kg']);
-        $mer         = $this->bcsService->calculateMer($rer, $validated['gender'], (float) $validated['age_years']);
-
-        // Gemini recommendation
-        $recommendation = null;
         try {
-            $recommendation = $this->geminiService->generateRecommendation([
-                'species'      => $breed ? (string) $breed->species : 'hewan',
-                'breed'        => $breedName,
-                'gender'       => $validated['gender'],
-                'age_years'    => $validated['age_years'],
-                'weight_kg'    => $validated['weight_kg'],
-                'ideal_weight' => $idealWeight,
-                'bcs_score'    => $bcsScore,
-                'bcs_category' => $bcsCategory,
-                'rer'          => $rer,
-                'mer'          => $mer,
-            ]);
-        } catch (Throwable) {
-            // Recommendation is non-critical; proceed without it
+            $imageUrl = Storage::url($path);
+
+            // Predict breed via FastAPI
+            $imagePath = Storage::disk('public')->path($path);
+            $prediction = $this->breedService->predict($imagePath);
+
+            $breedName  = $prediction['breed'];
+            $confidence = $prediction['confidence'];
+
+            // Resolve ideal weight from breeds table
+            $breed = Breed::whereRaw('LOWER(REPLACE(name, " ", "_")) = ?', [
+                strtolower($breedName)
+            ])->first();
+
+            $idealWeight = $breed
+                ? $breed->getIdealWeightForGender($validated['gender'])
+                : $this->estimateIdealWeight((float) $validated['weight_kg']);
+
+            // BCS calculation
+            $bcsScore    = $this->bcsService->calculateBcs((float) $validated['weight_kg'], $idealWeight);
+            $bcsCategory = $this->bcsService->resolveBcsCategory($bcsScore);
+            $rer         = $this->bcsService->calculateRer((float) $validated['weight_kg']);
+            $mer         = $this->bcsService->calculateMer($rer, $validated['gender'], (float) $validated['age_years']);
+
+            // Gemini recommendation (non-critical)
+            $recommendation = null;
+            try {
+                $recommendation = $this->geminiService->generateRecommendation([
+                    'species'      => $breed ? (string) $breed->species : 'hewan',
+                    'breed'        => $breedName,
+                    'gender'       => $validated['gender'],
+                    'age_years'    => $validated['age_years'],
+                    'weight_kg'    => $validated['weight_kg'],
+                    'ideal_weight' => $idealWeight,
+                    'bcs_score'    => $bcsScore,
+                    'bcs_category' => $bcsCategory,
+                    'rer'          => $rer,
+                    'mer'          => $mer,
+                ]);
+            } catch (Throwable) {
+                // Recommendation is non-critical; proceed without it
+            }
+
+            $analysis = DB::transaction(fn () => Analysis::create([
+                'user_id'                  => $request->user()->id,
+                'pet_id'                   => null,
+                'pet_name'                 => $validated['pet_name'] ?? null,
+                'image_url'                => $imageUrl,
+                'weight_kg'                => $validated['weight_kg'],
+                'age_years'                => $validated['age_years'],
+                'gender'                   => $validated['gender'],
+                'breed_prediction'         => $breedName,
+                'confidence_score'         => $confidence,
+                'ideal_weight_used'        => $idealWeight,
+                'bcs_score'                => $bcsScore,
+                'bcs_category'             => $bcsCategory,
+                'rer'                      => $rer,
+                'mer'                      => $mer,
+                'nutrition_recommendation' => $recommendation,
+            ]));
+
+            return response()->json([
+                'message' => 'Analisis berhasil.',
+                'data'    => $analysis,
+            ], 201);
+
+        } catch (Throwable $e) {
+            // If anything fails after image upload, remove the orphaned file
+            Storage::disk('public')->delete($path);
+            throw $e;
         }
-
-        $analysis = Analysis::create([
-            'user_id'                 => $request->user()->id,
-            'pet_id'                  => null,
-            'pet_name'                => $validated['pet_name'] ?? null,
-            'image_url'               => $imageUrl,
-            'weight_kg'               => $validated['weight_kg'],
-            'age_years'               => $validated['age_years'],
-            'gender'                  => $validated['gender'],
-            'breed_prediction'        => $breedName,
-            'confidence_score'        => $confidence,
-            'ideal_weight_used'       => $idealWeight,
-            'bcs_score'               => $bcsScore,
-            'bcs_category'            => $bcsCategory,
-            'rer'                     => $rer,
-            'mer'                     => $mer,
-            'nutrition_recommendation' => $recommendation,
-        ]);
-
-        return response()->json([
-            'message' => 'Analisis berhasil.',
-            'data'    => $analysis,
-        ], 201);
     }
 
     public function destroy(Request $request, int $id): JsonResponse
     {
         $analysis = Analysis::where('user_id', $request->user()->id)->findOrFail($id);
+
+        // Delete the image file from storage before removing the record
+        $imagePath = ltrim(str_replace('/storage', '', parse_url($analysis->image_url, PHP_URL_PATH)), '/');
+        Storage::disk('public')->delete($imagePath);
+
         $analysis->delete();
 
         return response()->json(['message' => 'Analisis berhasil dihapus.']);
