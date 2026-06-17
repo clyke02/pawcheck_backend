@@ -19,13 +19,14 @@ class GeminiService
     {
         $prompt = $this->buildPrompt($context);
 
-        $response = Http::timeout(30)->post("{$this->apiUrl}?key={$this->apiKey}", [
+        $response = Http::timeout(60)->post("{$this->apiUrl}?key={$this->apiKey}", [
             'contents' => [
                 ['parts' => [['text' => $prompt]]],
             ],
             'generationConfig' => [
                 'temperature'     => 0.7,
                 'maxOutputTokens' => 4096,
+                'thinkingConfig'  => ['thinkingBudget' => 0],
             ],
         ]);
 
@@ -33,7 +34,13 @@ class GeminiService
             throw new RuntimeException('Gemini API error: ' . $response->body());
         }
 
-        return $response->json('candidates.0.content.parts.0.text') ?? '';
+        $parts = $response->json('candidates.0.content.parts') ?? [];
+        $text  = collect($parts)
+            ->filter(fn($p) => empty($p['thought']))
+            ->pluck('text')
+            ->implode('');
+
+        return $text;
     }
 
     private function buildPrompt(array $ctx): string
