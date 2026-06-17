@@ -12,6 +12,7 @@ class Analysis extends Model
     protected $fillable = [
         'user_id',
         'pet_id',
+        'pet_name',
         'image_url',
         'weight_kg',
         'age_years',

@@ -32,6 +32,7 @@ class AnalysisController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
+            'pet_name'   => 'nullable|string|max:100',
             'image'      => 'required|image|max:5120',
             'weight_kg'  => 'required|numeric|min:0.1|max:200',
             'age_years'  => 'required|numeric|min:0|max:30',
@@ -99,6 +100,7 @@ class AnalysisController extends Controller
         $analysis = Analysis::create([
             'user_id'                 => $request->user()->id,
             'pet_id'                  => null,
+            'pet_name'                => $validated['pet_name'] ?? null,
             'image_url'               => $imageUrl,
             'weight_kg'               => $validated['weight_kg'],
             'age_years'               => $validated['age_years'],
