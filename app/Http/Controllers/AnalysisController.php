@@ -131,6 +131,86 @@ class AnalysisController extends Controller
         }
     }
 
+    public function reanalyze(Request $request, int $petId): JsonResponse
+    {
+        $pet = $request->user()->pets()->with('breed')->findOrFail($petId);
+
+        $validated = $request->validate([
+            'weight_kg' => 'required|numeric|min:0.1|max:200',
+            'age_years' => 'required|numeric|min:0|max:30',
+        ], [
+            'weight_kg.required' => 'Berat badan wajib diisi.',
+            'weight_kg.numeric'  => 'Berat badan harus berupa angka.',
+            'weight_kg.min'      => 'Berat badan minimal 0.1 kg.',
+            'weight_kg.max'      => 'Berat badan maksimal 200 kg.',
+            'age_years.required' => 'Usia wajib diisi.',
+            'age_years.numeric'  => 'Usia harus berupa angka.',
+            'age_years.max'      => 'Usia maksimal 30 tahun.',
+        ]);
+
+        // Re-analysis reuses the breed already known for this pet, so no photo or
+        // FastAPI prediction is needed. Photo, breed and confidence are copied from
+        // the pet's most recent analysis; only the weight/age-driven scores change.
+        $base = $pet->analyses()->first();
+
+        if (! $base) {
+            return response()->json(['message' => 'Hewan ini belum memiliki analisis awal.'], 422);
+        }
+
+        $weight = (float) $validated['weight_kg'];
+        $age    = (float) $validated['age_years'];
+
+        $idealWeight = $pet->breed
+            ? $pet->breed->getIdealWeightForGender($pet->gender)
+            : $this->estimateIdealWeight($weight);
+
+        $bcsScore    = $this->bcsService->calculateBcs($weight, $idealWeight);
+        $bcsCategory = $this->bcsService->resolveBcsCategory($bcsScore);
+        $rer         = $this->bcsService->calculateRer($weight);
+        $mer         = $this->bcsService->calculateMer($rer, $pet->gender, $age);
+
+        $recommendation = null;
+        try {
+            $recommendation = $this->geminiService->generateRecommendation([
+                'species'      => $pet->breed ? (string) $pet->breed->species : 'hewan',
+                'breed'        => $base->breed_prediction,
+                'gender'       => $pet->gender,
+                'age_years'    => $age,
+                'weight_kg'    => $weight,
+                'ideal_weight' => $idealWeight,
+                'bcs_score'    => $bcsScore,
+                'bcs_category' => $bcsCategory,
+                'rer'          => $rer,
+                'mer'          => $mer,
+            ]);
+        } catch (Throwable) {
+            // Recommendation is non-critical; proceed without it
+        }
+
+        $analysis = DB::transaction(fn () => Analysis::create([
+            'user_id'                  => $request->user()->id,
+            'pet_id'                   => $pet->id,
+            'pet_name'                 => $pet->name,
+            'image_url'                => $base->image_url,
+            'weight_kg'                => $weight,
+            'age_years'                => $age,
+            'gender'                   => $pet->gender,
+            'breed_prediction'         => $base->breed_prediction,
+            'confidence_score'         => $base->confidence_score,
+            'ideal_weight_used'        => $idealWeight,
+            'bcs_score'                => $bcsScore,
+            'bcs_category'             => $bcsCategory,
+            'rer'                      => $rer,
+            'mer'                      => $mer,
+            'nutrition_recommendation' => $recommendation,
+        ]));
+
+        return response()->json([
+            'message' => 'Analisis ulang berhasil.',
+            'data'    => $analysis,
+        ], 201);
+    }
+
     public function destroy(Request $request, int $id): JsonResponse
     {
         $analysis = Analysis::where('user_id', $request->user()->id)->findOrFail($id);

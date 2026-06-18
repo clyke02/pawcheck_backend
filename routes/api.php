@@ -18,6 +18,7 @@ Route::prefix('auth')->group(function () {
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     // Pets
+    Route::post('pets/{id}/analyses', [AnalysisController::class, 'reanalyze']);
     Route::apiResource('pets', PetController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
 
     // Analyses
