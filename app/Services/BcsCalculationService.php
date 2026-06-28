@@ -34,13 +34,22 @@ class BcsCalculationService
         return round(70 * pow($weightKg, 0.75), 2);
     }
 
-    public function calculateMer(float $rer, string $gender, float $ageYears): float
-    {
-        // Senior: >= 7 years, Young intact: < 2 years female or < 1.5 years male
+    public function calculateMer(
+        float $rer,
+        string $species,
+        float $ageYears,
+        bool $isNeutered,
+        string $activityLevel,
+    ): float {
+        // Faktor pengali MER mengacu tabel Pet Nutrition Alliance (PNA).
+        // Prioritas: pertumbuhan -> aktivitas rendah (inaktif) -> status steril.
+        $isCat = strtolower($species) === 'cat';
+
         $factor = match (true) {
-            $ageYears >= 7.0 => 1.2,
-            $ageYears < 2.0  => 1.8,
-            default          => 1.6,
+            $ageYears < 2.0          => 2.0,                 // Pertumbuhan (< 2 tahun)
+            $activityLevel === 'low' => $isCat ? 1.0 : 1.4,  // Inaktif / aktivitas rendah
+            ! $isNeutered            => $isCat ? 1.4 : 1.8,  // Dewasa tidak steril
+            default                  => $isCat ? 1.2 : 1.6,  // Dewasa steril
         };
 
         return round($rer * $factor, 2);
