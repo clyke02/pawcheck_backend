@@ -45,6 +45,13 @@ class GeminiService
 
     private function buildPrompt(array $ctx): string
     {
+        $neuter = ($ctx['is_neutered'] ?? false) ? 'Sudah disteril' : 'Belum disteril';
+        $activity = match ($ctx['activity_level'] ?? 'average') {
+            'low'   => 'Rendah (< 30 menit/hari)',
+            'high'  => 'Tinggi (> 1 jam/hari)',
+            default => 'Sedang (30-60 menit/hari)',
+        };
+
         return <<<EOT
 Berikan rekomendasi nutrisi dan perawatan spesifik untuk hewan peliharaan berikut dalam Bahasa Indonesia. Langsung tulis rekomendasinya tanpa salam pembuka, perkenalan diri, atau kalimat pembuka apapun.
 
@@ -52,6 +59,8 @@ Data Hewan:
 - Jenis: {$ctx['species']}
 - Ras: {$ctx['breed']}
 - Gender: {$ctx['gender']}
+- Status sterilisasi: {$neuter}
+- Tingkat aktivitas harian: {$activity}
 - Usia: {$ctx['age_years']} tahun
 - Berat saat ini: {$ctx['weight_kg']} kg
 - Berat ideal: {$ctx['ideal_weight']} kg
