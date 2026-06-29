@@ -18,8 +18,8 @@ return new class extends Migration
 
         Schema::table('analyses', function (Blueprint $table) {
             $table->dropColumn(['pet_name', 'image_url']);
-            $table->enum('activity_level', ['low', 'average', 'high'])
-                  ->default('average')->after('age_years');
+            $table->enum('activity_level', ['inactive', 'active'])
+                  ->default('active')->after('age_years');
         });
 
         Schema::table('analyses', function (Blueprint $table) {

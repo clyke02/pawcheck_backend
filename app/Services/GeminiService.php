@@ -46,10 +46,9 @@ class GeminiService
     private function buildPrompt(array $ctx): string
     {
         $neuter = ($ctx['is_neutered'] ?? false) ? 'Sudah disteril' : 'Belum disteril';
-        $activity = match ($ctx['activity_level'] ?? 'average') {
-            'low'   => 'Rendah (< 30 menit/hari)',
-            'high'  => 'Tinggi (> 1 jam/hari)',
-            default => 'Sedang (30-60 menit/hari)',
+        $activity = match ($ctx['activity_level'] ?? 'active') {
+            'inactive' => 'Kurang aktif (di dalam rumah, tidak banyak bergerak)',
+            default    => 'Aktif (rutin bergerak, bermain, atau diajak jalan)',
         };
 
         return <<<EOT

@@ -32,7 +32,7 @@ class AnalysisController extends Controller
         $validated = $request->validate([
             'pet_id'         => 'required|integer|exists:pets,id',
             'weight_kg'      => 'required|numeric|min:0.1|max:200',
-            'activity_level' => 'required|in:low,average,high',
+            'activity_level' => 'required|in:inactive,active',
         ], [
             'pet_id.required'         => 'Data hewan tidak ditemukan.',
             'pet_id.exists'           => 'Data hewan tidak valid.',

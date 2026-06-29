@@ -42,14 +42,15 @@ class BcsCalculationService
         string $activityLevel,
     ): float {
         // Faktor pengali MER mengacu tabel Pet Nutrition Alliance (PNA).
-        // Prioritas: pertumbuhan -> aktivitas rendah (inaktif) -> status steril.
+        // Prioritas: pertumbuhan -> kurang aktif (inaktif) -> status steril.
+        // Aktivitas hanya dua tingkat sesuai PNA: inaktif vs dewasa aktif normal.
         $isCat = strtolower($species) === 'cat';
 
         $factor = match (true) {
-            $ageYears < 2.0          => 2.0,                 // Pertumbuhan (< 2 tahun)
-            $activityLevel === 'low' => $isCat ? 1.0 : 1.4,  // Inaktif / aktivitas rendah
-            ! $isNeutered            => $isCat ? 1.4 : 1.8,  // Dewasa tidak steril
-            default                  => $isCat ? 1.2 : 1.6,  // Dewasa steril
+            $ageYears < 2.0               => 2.0,                 // Pertumbuhan (< 2 tahun)
+            $activityLevel === 'inactive' => $isCat ? 1.0 : 1.4,  // Kurang aktif / inaktif
+            ! $isNeutered                 => $isCat ? 1.4 : 1.8,  // Dewasa tidak steril
+            default                       => $isCat ? 1.2 : 1.6,  // Dewasa steril
         };
 
         return round($rer * $factor, 2);
