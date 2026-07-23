@@ -18,7 +18,7 @@ class PetController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $pets = $request->user()->pets()->with('breed')->latest()->get();
+        $pets = $request->user()->pets()->with('breed','analyses')->latest()->get();
 
         return response()->json(['data' => $pets]);
     }
