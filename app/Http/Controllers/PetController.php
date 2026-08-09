@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\NotAPetImageException;
 use App\Models\Breed;
 use App\Models\Pet;
 use App\Services\BreedPredictionService;
@@ -82,6 +83,11 @@ class PetController extends Controller
                 'message' => 'Hewan peliharaan berhasil ditambahkan.',
                 'data'    => $pet->load('breed'),
             ], 201);
+        } catch (NotAPetImageException $e) {
+            Storage::disk('public')->delete($path);
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 422);
         } catch (Throwable $e) {
             Storage::disk('public')->delete($path);
             throw $e;
